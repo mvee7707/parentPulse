@@ -1,10 +1,10 @@
-// Mobile Chatbot Frontend
 class ChatbotApp {
     constructor() {
         this.messagesContainer = document.getElementById('chat-messages');
         this.messageInput = document.getElementById('message-input');
         this.sendButton = document.getElementById('send-button');
         this.studentIdInput = document.getElementById('studentId');
+        this.darkToggle = document.getElementById('dark-mode-toggle');
 
         this.apiBaseUrl = window.location.origin;
         this.isTyping = false;
@@ -21,22 +21,34 @@ class ChatbotApp {
             }
         });
 
+        // Dark mode — restore saved preference
+        const saved = localStorage.getItem('theme');
+        if (saved === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            this.darkToggle.textContent = '☀️ Light';
+        }
+        this.darkToggle.addEventListener('click', () => this.toggleDarkMode());
+
         // Auto-focus input on mobile
         if ('ontouchstart' in window) {
             this.messageInput.focus();
         }
 
-        // Handle viewport height changes on mobile
         this.handleViewportHeight();
     }
 
+    toggleDarkMode() {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
+        this.darkToggle.textContent = isDark ? '🌙 Dark' : '☀️ Light';
+        localStorage.setItem('theme', isDark ? '' : 'dark');
+    }
+
     handleViewportHeight() {
-        // Fix for mobile browsers that change viewport height
         const setVH = () => {
             const vh = window.innerHeight * 0.01;
             document.documentElement.style.setProperty('--vh', `${vh}px`);
         };
-
         setVH();
         window.addEventListener('resize', setVH);
         window.addEventListener('orientationchange', setVH);
@@ -52,14 +64,9 @@ class ChatbotApp {
             return;
         }
 
-        // Add user message
         this.addMessage(message, 'user');
         this.messageInput.value = '';
-
-        // Disable input while processing
         this.setInputDisabled(true);
-
-        // Show typing indicator
         this.showTypingIndicator();
 
         try {
@@ -72,7 +79,6 @@ class ChatbotApp {
             console.error('Chat API error:', error);
         }
 
-        // Re-enable input
         this.setInputDisabled(false);
         this.messageInput.focus();
     }
@@ -86,7 +92,7 @@ class ChatbotApp {
             body: JSON.stringify({
                 question: question,
                 studentUserId: parseInt(studentId),
-                courseId: null // Optional
+                courseId: null
             })
         });
 
@@ -108,15 +114,13 @@ class ChatbotApp {
 
         messageDiv.appendChild(contentDiv);
         this.messagesContainer.appendChild(messageDiv);
-
-        // Scroll to bottom
         this.scrollToBottom();
     }
 
     showTypingIndicator() {
         if (this.isTyping) return;
-
         this.isTyping = true;
+
         const typingDiv = document.createElement('div');
         typingDiv.className = 'message bot-message typing-indicator';
         typingDiv.id = 'typing-indicator';
@@ -135,15 +139,12 @@ class ChatbotApp {
 
     hideTypingIndicator() {
         const typingIndicator = document.getElementById('typing-indicator');
-        if (typingIndicator) {
-            typingIndicator.remove();
-        }
+        if (typingIndicator) typingIndicator.remove();
         this.isTyping = false;
     }
 
     showError(message) {
         this.addMessage(message, 'bot');
-        // Add error styling
         const lastMessage = this.messagesContainer.lastElementChild;
         if (lastMessage && lastMessage.classList.contains('bot-message')) {
             lastMessage.classList.add('error-message');
@@ -163,15 +164,12 @@ class ChatbotApp {
     }
 }
 
-// Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     new ChatbotApp();
 });
 
-// Service Worker for PWA capabilities (optional)
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        // Register service worker for offline capabilities
         // navigator.serviceWorker.register('/sw.js');
     });
 }
