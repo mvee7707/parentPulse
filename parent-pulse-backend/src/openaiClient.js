@@ -133,7 +133,7 @@ For all other questions, provide a normal response based on the context provided
     ];
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'ft:gpt-4o-mini-2024-07-18:parent-pulse::Dbwgp2wS', //mv. changed model to ft on 5/4/2026
       messages: messages,
       max_tokens: 500,
       temperature: 0.7,
@@ -166,7 +166,7 @@ export async function generateResponseStream(question, context = '') {
 
     // USE FINE-TUNED MODEL 
     const stream = await openai.chat.completions.create({
-      model: 'ft:gpt-4.1-nano-2025-04-14:parent-pulse::DXpE75c7',
+      model: 'ft:gpt-4o-mini-2024-07-18:parent-pulse::Dbwgp2wS',
       messages: messages,
       max_tokens: 500,
       temperature: 0.7,
