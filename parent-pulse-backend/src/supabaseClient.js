@@ -34,18 +34,19 @@ export async function getStudentGradesSummary(studentUserId, courseId = null) {
       `)
       .eq('student_user_id', studentUserId);
 
-    if (courseId) {
-      query = query.eq('assignments.course_id', courseId);
-    }
-
     const { data, error } = await query;
     console.log('[getStudentGradesSummary] Query completed');
     console.log('[getStudentGradesSummary] Error:', error);
     console.log('[getStudentGradesSummary] Data length:', data?.length || 0);
     console.log('[getStudentGradesSummary] Raw data:', JSON.stringify(data, null, 2));
-    
+
     if (error) throw error;
-    return data || [];
+
+    const rows = data || [];
+    if (courseId) {
+      return rows.filter(row => Number(row.assignments?.course_id) === Number(courseId));
+    }
+    return rows;
   } catch (error) {
     console.error('Error fetching student grades:', error);
     throw error;
