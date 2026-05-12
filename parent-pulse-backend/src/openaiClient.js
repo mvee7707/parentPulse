@@ -28,7 +28,7 @@ Question: "${question}"
 Response:`;
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'ft:gpt-4o-mini-2024-07-18:parent-pulse::Dbwgp2wS',
       messages: [
         {
           role: 'user',
@@ -75,7 +75,7 @@ Question: ${question}
 Courses: ${JSON.stringify(courseOptions)}`;
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'ft:gpt-4o-mini-2024-07-18:parent-pulse::Dbwgp2wS',
       messages: [
         {
           role: 'user',
