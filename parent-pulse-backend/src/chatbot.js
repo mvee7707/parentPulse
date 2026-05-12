@@ -87,6 +87,16 @@ function toLetterGrade(averageGPA) {
   return letterGrade;
 }
 
+function percentToLetterGrade(pct) {
+  if (pct === null || pct === undefined) return null;
+  const p = parseFloat(pct);
+  if (p >= 90) return 'A';
+  if (p >= 80) return 'B';
+  if (p >= 70) return 'C';
+  if (p >= 60) return 'D';
+  return 'F';
+}
+
 async function buildCourseBreakdown(grades) {
   const { calculateAverageGrade, calculateOverallPercentage } = await import('./supabaseClient.js');
 
@@ -270,16 +280,15 @@ export async function askQuestion(userQuestion, studentUserId, courseId = null) 
 
       if (matchedCourse && effectiveCourseId) {
         const courseLabel = getCourseLabelFromEnrollment(matchedCourse);
-        const gpaPart = averageData.averageGrade !== null
-          ? `GPA ${averageData.averageGrade} (${averageData.letterGrade})`
-          : 'No GPA yet';
-        const pctPart = averageData.overallPercentage !== null
-          ? `${averageData.overallPercentage}%`
-          : 'N/A%';
+        const pct = averageData.overallPercentage;
+        const letterGrade = percentToLetterGrade(pct);
+        const gradePart = pct !== null
+          ? `${pct}% (${letterGrade})`
+          : 'No grade yet';
 
         return {
           question: userQuestion,
-          response: `${courseLabel}: ${gpaPart}, ${pctPart}, based on ${averageData.gradedAssignments}/${averageData.totalAssignments} assignments.`,
+          response: `${courseLabel}: ${gradePart}, based on ${averageData.gradedAssignments}/${averageData.totalAssignments} assignments.`,
           overallPercentage: averageData.overallPercentage,
           context: {
             ...averageData,
