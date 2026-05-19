@@ -97,6 +97,39 @@ function percentToLetterGrade(pct) {
   return 'F';
 }
 
+function buildAssignmentListContext(grades, courseLabel) {
+  let context = courseLabel ? `Course: ${courseLabel}\n\n` : '';
+  context += 'Assignment List (only graded, non-excused, non-missing):\n';
+
+  const valid = (grades || []).filter(g => {
+    if (g.excused || g.missing) return false;
+    const a = g.assignments;
+    return a && Number(a.points_possible) > 0 && g.score != null;
+  });
+
+  // Group by category
+  const byCategory = new Map();
+  for (const g of valid) {
+    const cat = g.assignments?.assignment_groups?.name || 'Uncategorized';
+    if (!byCategory.has(cat)) byCategory.set(cat, []);
+    byCategory.get(cat).push(g);
+  }
+
+  for (const [cat, items] of byCategory.entries()) {
+    context += `\n${cat}:\n`;
+    for (const g of items) {
+      const a = g.assignments;
+      const pts = Number(a.points_possible);
+      const score = Number(g.score);
+      const pct = ((score / pts) * 100).toFixed(1);
+      const due = a.due_at ? String(a.due_at).slice(0, 10) : 'N/A';
+      context += `  - ${a.name}: ${score}/${pts} (${pct}%), due ${due}\n`;
+    }
+  }
+
+  return context;
+}
+
 async function buildCourseBreakdown(grades) {
   const { calculateAverageGrade, calculateOverallPercentage } = await import('./supabaseClient.js');
 
@@ -225,6 +258,24 @@ export async function askQuestion(userQuestion, studentUserId, courseId = null) 
       }
 
       const averageData = await getAverageGrade(studentUserId, effectiveCourseId);
+
+      const asksSpecificAssignment = /\b(highest|lowest|best|worst|top|bottom|which\s+(assignment|test|quiz|project|grade|score)|what\s+(test|quiz|assignment|project)|how\s+did\s+he\s+do\s+on|how\s+did\s+she\s+do\s+on)\b/i.test(questionLower);
+
+      if (asksSpecificAssignment && !asksAllCoursesBreakdown) {
+        const courseLabel = matchedCourse ? getCourseLabelFromEnrollment(matchedCourse) : null;
+        const detailedContext = buildAssignmentListContext(averageData.allGrades, courseLabel);
+        const aiResponse = await generateResponse(userQuestion, detailedContext);
+
+        return {
+          question: userQuestion,
+          response: aiResponse,
+          overallPercentage: averageData.overallPercentage,
+          context: averageData,
+          allGrades: averageData.allGrades,
+          dataUsed: ['grades'],
+          apiCall: 'SPECIFIC_GRADE_QUERY'
+        };
+      }
 
       if (asksAllCoursesBreakdown) {
         const courseBreakdown = await buildCourseBreakdown(averageData.allGrades || []);

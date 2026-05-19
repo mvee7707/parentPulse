@@ -29,7 +29,7 @@ export async function getStudentGradesSummary(studentUserId, courseId = null) {
         submitted_at,
         graded_at,
         assignment_id,
-        assignments(name, points_possible, due_at, course_id, courses(course_code, name)),
+        assignments(name, points_possible, due_at, course_id, courses(course_code, name), assignment_groups(name)),
         student_user_id
       `)
       .eq('student_user_id', studentUserId);
