@@ -5,6 +5,22 @@
 -- This ensures data security and proper access control
 
 -- ============================================
+-- SEQUENCES (must exist before tables reference them)
+-- ============================================
+CREATE SEQUENCE IF NOT EXISTS accounts_account_id_seq;
+CREATE SEQUENCE IF NOT EXISTS terms_term_id_seq;
+CREATE SEQUENCE IF NOT EXISTS users_user_id_seq;
+CREATE SEQUENCE IF NOT EXISTS courses_course_id_seq;
+CREATE SEQUENCE IF NOT EXISTS sections_section_id_seq;
+CREATE SEQUENCE IF NOT EXISTS assignment_groups_assignment_group_id_seq;
+CREATE SEQUENCE IF NOT EXISTS assignments_assignment_id_seq;
+CREATE SEQUENCE IF NOT EXISTS enrollments_enrollment_id_seq;
+CREATE SEQUENCE IF NOT EXISTS submissions_submission_id_seq;
+CREATE SEQUENCE IF NOT EXISTS grading_periods_grading_period_id_seq;
+CREATE SEQUENCE IF NOT EXISTS import_batches_import_batch_id_seq;
+CREATE SEQUENCE IF NOT EXISTS raw_grade_imports_raw_import_id_seq;
+
+-- ============================================
 -- ACCOUNTS TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS public.accounts (
@@ -43,6 +59,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   email text,
   user_type text NOT NULL CHECK (user_type = ANY (ARRAY['student'::text, 'teacher'::text, 'parent'::text, 'admin'::text])),
   sis_user_id text,
+  grade_level text,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT users_pkey PRIMARY KEY (user_id),
   CONSTRAINT users_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.accounts(account_id)
@@ -61,6 +78,7 @@ CREATE TABLE IF NOT EXISTS public.courses (
   name text NOT NULL,
   sis_course_id text,
   workflow_state text NOT NULL DEFAULT 'available'::text,
+  grade_level text,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT courses_pkey PRIMARY KEY (course_id),
   CONSTRAINT courses_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.accounts(account_id),
@@ -238,22 +256,6 @@ CREATE TABLE IF NOT EXISTS public.raw_grade_imports (
 );
 
 ALTER TABLE public.raw_grade_imports ENABLE ROW LEVEL SECURITY;
-
--- ============================================
--- CREATE SEQUENCES (if not already created)
--- ============================================
-CREATE SEQUENCE IF NOT EXISTS accounts_account_id_seq;
-CREATE SEQUENCE IF NOT EXISTS terms_term_id_seq;
-CREATE SEQUENCE IF NOT EXISTS users_user_id_seq;
-CREATE SEQUENCE IF NOT EXISTS courses_course_id_seq;
-CREATE SEQUENCE IF NOT EXISTS sections_section_id_seq;
-CREATE SEQUENCE IF NOT EXISTS assignment_groups_assignment_group_id_seq;
-CREATE SEQUENCE IF NOT EXISTS assignments_assignment_id_seq;
-CREATE SEQUENCE IF NOT EXISTS enrollments_enrollment_id_seq;
-CREATE SEQUENCE IF NOT EXISTS submissions_submission_id_seq;
-CREATE SEQUENCE IF NOT EXISTS grading_periods_grading_period_id_seq;
-CREATE SEQUENCE IF NOT EXISTS import_batches_import_batch_id_seq;
-CREATE SEQUENCE IF NOT EXISTS raw_grade_imports_raw_import_id_seq;
 
 -- ============================================
 -- BASIC RLS POLICIES (Allow authenticated users to read)

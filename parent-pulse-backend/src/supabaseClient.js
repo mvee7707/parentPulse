@@ -34,18 +34,19 @@ export async function getStudentGradesSummary(studentUserId, courseId = null) {
       `)
       .eq('student_user_id', studentUserId);
 
-    if (courseId) {
-      query = query.eq('assignments.course_id', courseId);
-    }
-
     const { data, error } = await query;
     console.log('[getStudentGradesSummary] Query completed');
     console.log('[getStudentGradesSummary] Error:', error);
     console.log('[getStudentGradesSummary] Data length:', data?.length || 0);
     console.log('[getStudentGradesSummary] Raw data:', JSON.stringify(data, null, 2));
-    
+
     if (error) throw error;
-    return data || [];
+
+    const rows = data || [];
+    if (courseId) {
+      return rows.filter(row => Number(row.assignments?.course_id) === Number(courseId));
+    }
+    return rows;
   } catch (error) {
     console.error('Error fetching student grades:', error);
     throw error;
@@ -412,42 +413,27 @@ export function calculateOverallPercentage(grades) {
   const filtered = grades.filter(g => !(g.excused || g.missing));
   console.log('[calculateOverallPercentage] After filtering excused/missing:', filtered.length, 'remaining');
   
-  const percentages = filtered
-    .map((g, idx) => {
-      // If grade is already a percentage string like "85.00%"
-      if (g.grade && String(g.grade).includes('%')) {
-        const match = String(g.grade).match(/(\d+\.?\d*)/);
-        if (match) {
-          const percent = parseFloat(match[1]);
-          console.log(`[calculateOverallPercentage] Idx ${idx}: Extracted percentage from "${g.grade}" = ${percent}%`);
-          return percent;
-        }
-      }
-      
-      // Fall back to calculating from score
-      if (g.score != null && g.assignments?.points_possible != null) {
-        const pointsPossible = Number(g.assignments.points_possible);
-        if (pointsPossible > 0) {
-          const percent = (Number(g.score) / pointsPossible) * 100;
-          console.log(`[calculateOverallPercentage] Idx ${idx}: Calculated from score ${g.score}/${pointsPossible} = ${percent.toFixed(2)}%`);
-          return percent;
-        }
-      }
-      
-      console.log(`[calculateOverallPercentage] Idx ${idx}: No percentage available`);
-      return null;
-    })
-    .filter(p => p !== null);
-  
-  console.log('[calculateOverallPercentage] Valid percentages:', percentages);
-  
-  if (percentages.length === 0) {
-    console.log('[calculateOverallPercentage] NO VALID PERCENTAGES - returning null');
+  let totalScore = 0;
+  let totalPossible = 0;
+
+  for (const g of filtered) {
+    const pointsPossible = Number(g.assignments?.points_possible);
+    if (!pointsPossible || pointsPossible <= 0) continue;
+
+    if (g.score != null) {
+      totalScore += Number(g.score);
+      totalPossible += pointsPossible;
+    }
+  }
+
+  console.log(`[calculateOverallPercentage] Total: ${totalScore}/${totalPossible}`);
+
+  if (totalPossible === 0) {
+    console.log('[calculateOverallPercentage] NO VALID SCORES - returning null');
     return null;
   }
-  
-  const avg = percentages.reduce((a, b) => a + b, 0) / percentages.length;
-  const result = avg.toFixed(2);
+
+  const result = ((totalScore / totalPossible) * 100).toFixed(2);
   console.log('[calculateOverallPercentage] Overall percentage calculated:', result);
   return result;
 }
