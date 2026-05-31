@@ -1,9 +1,10 @@
 import fs from "fs";
 import path from "path";
 import { supabase } from "./supabaseClient.js";
-import "./initSchema.js";  
+import { initSchema } from "./initSchema.js";   // <-- must export this
+                                                 //     from initSchema.js
 
-const JSON_DIR = "./jsonData"; 
+const JSON_DIR = "./jsonData";
 const DRY_RUN = false; // Set to true to skip actual DB writes and just log actions
 
 function fakeId(prefix) {
@@ -18,7 +19,16 @@ async function insertRow(table, payload) {
   }
 
   const { data, error } = await supabase.from(table).insert(payload).select();
-  if (error) throw error;
+
+  if (error) {
+    console.error(`❌ Insert failed for table "${table}"`, error);
+    throw error;
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error(`❌ Insert returned no data for table "${table}". Table may not exist.`);
+  }
+
   return data[0];
 }
 
@@ -31,6 +41,10 @@ function mapStatus(status) {
 }
 
 async function importGrades() {
+  console.log("⏳ Waiting for schema to be ready...");
+  await initSchema();   // <-- ensures tables exist BEFORE inserts
+  console.log("✅ Schema ready. Starting import...\n");
+
   const files = fs.readdirSync(JSON_DIR).filter(f => f.endsWith(".json"));
   console.log(`Found ${files.length} JSON files`);
 
@@ -117,7 +131,8 @@ async function importGrades() {
     }
   }
 
-  console.log("\n Import complete");
+  console.log("\n🎉 Import complete");
 }
 
+// Run importer
 importGrades();

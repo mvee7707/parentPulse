@@ -5,7 +5,7 @@ async function runSQL(sql) {
   if (error) console.error("SQL Error:", error);
 }
 
-async function initSchema() {
+export async function initSchema() {
   console.log("🔧 Ensuring tables exist...");
 
   await runSQL(`
@@ -87,5 +87,3 @@ async function initSchema() {
 
   console.log("✅ Schema ready");
 }
-
-initSchema();
