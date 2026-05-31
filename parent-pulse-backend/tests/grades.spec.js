@@ -185,7 +185,7 @@ test('scrape all grades by student', async ({ page }) => {
 
     
     // Write one file per student — clear old file first
-const filename = `grades_${student.label.toLowerCase()}.json`;
+const filename = `./jsonData/grades_${student.label.toLowerCase()}.json`;
 
 // Ensure no duplicates: delete old file if it exists
 if (fs.existsSync(filename)) {
