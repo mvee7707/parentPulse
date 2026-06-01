@@ -23,9 +23,10 @@ class ChatbotApp {
 
         // Dark mode — restore saved preference
         const saved = localStorage.getItem('theme');
-        
-        document.documentElement.setAttribute('data-theme', 'dark');
-        this.darkToggle.textContent = '☀️ Light';
+        if (saved === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            this.darkToggle.textContent = '☀️ Light';
+        }
         this.darkToggle.addEventListener('click', () => this.toggleDarkMode());
 
         // Auto-focus input on mobile

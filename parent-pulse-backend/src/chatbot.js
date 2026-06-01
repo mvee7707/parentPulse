@@ -331,15 +331,16 @@ export async function askQuestion(userQuestion, studentUserId, courseId = null) 
 
       if (matchedCourse && effectiveCourseId) {
         const courseLabel = getCourseLabelFromEnrollment(matchedCourse);
-        const pct = averageData.overallPercentage;
-        const letterGrade = percentToLetterGrade(pct);
-        const gradePart = pct !== null
-          ? `${pct}% (${letterGrade})`
-          : 'No grade yet';
+        const gpaPart = averageData.averageGrade !== null
+          ? `GPA ${averageData.averageGrade} (${averageData.letterGrade})`
+          : 'No GPA yet';
+        const pctPart = averageData.overallPercentage !== null
+          ? `${averageData.overallPercentage}%`
+          : 'N/A%';
 
         return {
           question: userQuestion,
-          response: `${courseLabel}: ${gradePart}, based on ${averageData.gradedAssignments}/${averageData.totalAssignments} assignments.`,
+          response: `${courseLabel}: ${gpaPart}, ${pctPart}, based on ${averageData.gradedAssignments}/${averageData.totalAssignments} assignments.`,
           overallPercentage: averageData.overallPercentage,
           context: {
             ...averageData,
