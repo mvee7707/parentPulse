@@ -97,6 +97,60 @@ function percentToLetterGrade(pct) {
   return 'F';
 }
 
+function isTrendQuery(question) {
+  return /\b(trend|improv|getting\s+(better|worse)|going\s+(up|down)|declin|progress|over\s+time|throughout|trajectory|how\s+is\s+he\s+doing\s+over)\b/i.test(question);
+}
+
+function computeTrend(grades) {
+  const valid = (grades || [])
+    .filter(g =>
+      !g.excused &&
+      !g.missing &&
+      g.score != null &&
+      Number(g.assignments?.points_possible) > 0 &&
+      g.assignments?.due_at
+    )
+    .sort((a, b) => new Date(a.assignments.due_at) - new Date(b.assignments.due_at));
+
+  if (valid.length < 4) {
+    return { hasEnoughData: false, count: valid.length };
+  }
+
+  const half = Math.floor(valid.length / 2);
+  const firstHalf = valid.slice(0, half);
+  const secondHalf = valid.slice(-half);
+
+  const avg = (rows) => {
+    let score = 0;
+    let possible = 0;
+    for (const g of rows) {
+      score += Number(g.score);
+      possible += Number(g.assignments.points_possible);
+    }
+    return possible > 0 ? (score / possible) * 100 : 0;
+  };
+
+  const firstAvg = avg(firstHalf);
+  const secondAvg = avg(secondHalf);
+  const diff = secondAvg - firstAvg;
+
+  let direction;
+  if (diff > 5) direction = 'improving';
+  else if (diff < -5) direction = 'declining';
+  else direction = 'steady';
+
+  return {
+    hasEnoughData: true,
+    count: valid.length,
+    firstHalfAvg: firstAvg.toFixed(1),
+    secondHalfAvg: secondAvg.toFixed(1),
+    diff: diff.toFixed(1),
+    direction,
+    firstDate: String(valid[0].assignments.due_at).slice(0, 10),
+    lastDate: String(valid[valid.length - 1].assignments.due_at).slice(0, 10),
+  };
+}
+
 function extractDateRange(question) {
   const q = question.toLowerCase();
   const now = new Date();
@@ -353,6 +407,39 @@ export async function askQuestion(userQuestion, studentUserId, courseId = null) 
           allGrades: filteredGrades,
           dataUsed: ['grades'],
           apiCall: 'DATE_RANGE_GRADE_QUERY'
+        };
+      }
+
+      if (isTrendQuery(userQuestion)) {
+        const trend = computeTrend(averageData.allGrades);
+        const courseLabel = matchedCourse
+          ? getCourseLabelFromEnrollment(matchedCourse)
+          : 'across all courses';
+
+        if (!trend.hasEnoughData) {
+          return {
+            question: userQuestion,
+            response: `Not enough graded assignments to detect a trend yet (need at least 4, currently have ${trend.count}).`,
+            context: { ...averageData, trend },
+            allGrades: averageData.allGrades,
+            dataUsed: ['grades'],
+            apiCall: 'TREND_QUERY'
+          };
+        }
+
+        const sign = parseFloat(trend.diff) >= 0 ? '+' : '';
+        const response = `${courseLabel}: Grades are ${trend.direction}. ` +
+          `Early average (from ${trend.firstDate}): ${trend.firstHalfAvg}%. ` +
+          `Recent average (through ${trend.lastDate}): ${trend.secondHalfAvg}%. ` +
+          `That's a ${sign}${trend.diff}% change over ${trend.count} graded assignments.`;
+
+        return {
+          question: userQuestion,
+          response,
+          context: { ...averageData, trend },
+          allGrades: averageData.allGrades,
+          dataUsed: ['grades'],
+          apiCall: 'TREND_QUERY'
         };
       }
 
