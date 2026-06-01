@@ -97,6 +97,65 @@ function percentToLetterGrade(pct) {
   return 'F';
 }
 
+function extractDateRange(question) {
+  const q = question.toLowerCase();
+  const now = new Date();
+
+  if (/\bthis\s+week\b/.test(q)) {
+    const start = new Date(now);
+    start.setDate(now.getDate() - now.getDay());
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+    return { start, end, label: 'this week' };
+  }
+
+  if (/\blast\s+week\b/.test(q)) {
+    const start = new Date(now);
+    start.setDate(now.getDate() - now.getDay() - 7);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+    return { start, end, label: 'last week' };
+  }
+
+  if (/\bthis\s+month\b/.test(q)) {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    return { start, end, label: 'this month' };
+  }
+
+  if (/\blast\s+month\b/.test(q)) {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const end = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { start, end, label: 'last month' };
+  }
+
+  const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
+                       'july', 'august', 'september', 'october', 'november', 'december'];
+  for (let i = 0; i < monthNames.length; i++) {
+    if (new RegExp(`\\b${monthNames[i]}\\b`, 'i').test(q)) {
+      let year = now.getFullYear();
+      let start = new Date(year, i, 1);
+      // If the month is in the future this year, use previous year
+      if (start > now) {
+        year -= 1;
+        start = new Date(year, i, 1);
+      }
+      const end = new Date(year, i + 1, 1);
+      return { start, end, label: monthNames[i] };
+    }
+  }
+
+  // T1/T2/T3 semester references map to assignments.semester column
+  const semMatch = q.match(/\b(t|term\s+|semester\s+)([1-3])\b/i);
+  if (semMatch) {
+    return { semester: Number(semMatch[2]), label: `T${semMatch[2]}` };
+  }
+
+  return null;
+}
+
 function buildAssignmentListContext(grades, courseLabel) {
   let context = courseLabel ? `Course: ${courseLabel}\n\n` : '';
   context += 'Assignment List (only graded, non-excused, non-missing):\n';
@@ -258,6 +317,44 @@ export async function askQuestion(userQuestion, studentUserId, courseId = null) 
       }
 
       const averageData = await getAverageGrade(studentUserId, effectiveCourseId);
+
+      const dateRange = extractDateRange(userQuestion);
+      if (dateRange) {
+        const allGrades = averageData.allGrades || [];
+        const filteredGrades = allGrades.filter(g => {
+          if (dateRange.semester != null) {
+            return Number(g.assignments?.semester) === dateRange.semester;
+          }
+          const dueAt = g.assignments?.due_at;
+          if (!dueAt) return false;
+          const d = new Date(dueAt);
+          return d >= dateRange.start && d < dateRange.end;
+        });
+
+        if (filteredGrades.length === 0) {
+          return {
+            question: userQuestion,
+            response: `No graded assignments found for ${dateRange.label}.`,
+            context: { ...averageData, dateRange: dateRange.label, filteredCount: 0 },
+            allGrades: [],
+            dataUsed: ['grades'],
+            apiCall: 'DATE_RANGE_GRADE_QUERY'
+          };
+        }
+
+        const courseLabel = matchedCourse ? getCourseLabelFromEnrollment(matchedCourse) : null;
+        const ctx = `Date range: ${dateRange.label}\n\n` + buildAssignmentListContext(filteredGrades, courseLabel);
+        const aiResponse = await generateResponse(userQuestion, ctx);
+
+        return {
+          question: userQuestion,
+          response: aiResponse,
+          context: { ...averageData, dateRange: dateRange.label, filteredCount: filteredGrades.length },
+          allGrades: filteredGrades,
+          dataUsed: ['grades'],
+          apiCall: 'DATE_RANGE_GRADE_QUERY'
+        };
+      }
 
       const asksSpecificAssignment = /\b(highest|lowest|best|worst|top|bottom|which\s+(assignment|test|quiz|project|grade|score)|what\s+(test|quiz|assignment|project)|how\s+did\s+he\s+do\s+on|how\s+did\s+she\s+do\s+on)\b/i.test(questionLower);
 
