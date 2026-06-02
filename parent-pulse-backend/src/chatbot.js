@@ -397,7 +397,23 @@ export async function askQuestion(userQuestion, studentUserId, courseId = null) 
         }
 
         const courseLabel = matchedCourse ? getCourseLabelFromEnrollment(matchedCourse) : null;
-        const ctx = `Date range: ${dateRange.label}\n\n` + buildAssignmentListContext(filteredGrades, courseLabel);
+
+        let totalScore = 0;
+        let totalPossible = 0;
+        for (const g of filteredGrades) {
+          const pts = Number(g.assignments?.points_possible);
+          if (!pts || pts <= 0 || g.score == null) continue;
+          totalScore += Number(g.score);
+          totalPossible += pts;
+        }
+        const periodPct = totalPossible > 0 ? ((totalScore / totalPossible) * 100).toFixed(2) : null;
+        const periodLetter = percentToLetterGrade(periodPct);
+
+        const summary = periodPct !== null
+          ? `Period summary: ${totalScore}/${totalPossible} = ${periodPct}% (${periodLetter}) across ${filteredGrades.length} assignments for ${dateRange.label}.\nWhen answering, lead with this overall percentage and letter grade.\n\n`
+          : '';
+
+        const ctx = summary + `Date range: ${dateRange.label}\n\n` + buildAssignmentListContext(filteredGrades, courseLabel);
         const aiResponse = await generateResponse(userQuestion, ctx);
 
         return {
