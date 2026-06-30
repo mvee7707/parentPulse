@@ -98,7 +98,10 @@ function percentToLetterGrade(pct) {
 }
 
 function isTrendQuery(question) {
-  return /\b(trend|improv|getting\s+(better|worse)|going\s+(up|down)|declin|progress|over\s+time|throughout|trajectory|how\s+is\s+he\s+doing\s+over)\b/i.test(question);
+  // No trailing \b: the stems (improv, declin, trend, progress) must match their
+  // inflections too ("improving", "declining", "trending"), which a trailing word
+  // boundary would block (\b fails between "improv" and "ing").
+  return /\b(trend|improv|getting\s+(better|worse)|going\s+(up|down)|declin|progress|over\s+time|throughout|trajectory|how\s+is\s+he\s+doing\s+over)/i.test(question);
 }
 
 function termSortKey(title) {
